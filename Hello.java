@@ -1,9 +1,20 @@
 // Encapsulation 
 class Human
 {
-    private int age = 11;
-    private String name= "Dipak";
+    private int age;
+    private String name;
 
+    // Construstor is a special method.
+    // It has same name as class name.
+    // Construstor never return anything.
+    // Every time we will create an object it will call construstor
+    public Human()
+    {
+        // System.out.println("In construstor");
+        age = 11;
+        name= "Pradip";
+    }
+    
     public int getAge()
     {
         return age;
@@ -30,9 +41,10 @@ public class Hello{
     public static void main(String a[])
     {
         Human obj = new Human();
+        Human obj1 = new Human();
         
-        obj.setName("Kavita");
-        obj.setAge(42);
+       //obj.setName("Kavita");
+        //obj.setAge(42);
         String n = obj.getName();
         int b = obj.getAge();
         
