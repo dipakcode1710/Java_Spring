@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InstagramClone</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #fafafa;
+        }
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+    </div>
+
+    <nav class="bg-white border-b fixed w-full top-0 z-50">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-2xl font-bold">InstagramClone</h1>
+            <div class="flex items-center space-x-4">
+                <button id="homeBtn" class="text-2xl"><i class="bi bi-house-door"></i></button>
+                <button id="uploadBtn" class="text-2xl"><i class="bi bi-plus-square"></i></button>
+                <button id="profileBtn" class="text-2xl"><i class="bi bi-person-circle"></i></button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-4 pt-20">
+        <!-- Auth Forms -->
+        <div id="authSection" class="max-w-md mx-auto">
+            <div class="bg-white p-8 rounded-lg shadow-md">
+                <div class="flex justify-center mb-6">
+                    <h2 id="authTitle" class="text-2xl font-bold">Login</h2>
+                </div>
+                <form id="authForm">
+                    <input type="email" id="email" placeholder="Email" class="w-full mb-4 p-2 border rounded" required>
+                    <input type="text" id="username" placeholder="Username" class="w-full mb-4 p-2 border rounded hidden">
+                    <input type="password" id="password" placeholder="Password" class="w-full mb-4 p-2 border rounded" required>
+                    <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">Submit</button>
+                </form>
+                <p class="mt-4 text-center">
+                    <a href="#" id="toggleAuth" class="text-blue-500">Don't have an account? Sign up</a>
+                </p>
+            </div>
+        </div>
+
+        <!-- Feed Section -->
+        <div id="feedSection" class="hidden">
+            <div id="posts" class="space-y-6"></div>
+        </div>
+
+        <!-- Upload Modal -->
+        <div id="uploadModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center">
+            <div class="bg-white p-6 rounded-lg max-w-md w-full">
+                <h3 class="text-xl font-bold mb-4">Upload Photo</h3>
+                <form id="uploadForm">
+                    <input type="file" accept="image/*" class="w-full mb-4" required>
+                    <textarea placeholder="Write a caption..." class="w-full p-2 border rounded mb-4" required></textarea>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="closeUploadModal()" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Post</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Profile Section -->
+        <div id="profileSection" class="hidden">
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <div class="flex items-center space-x-4">
+                    <div class="w-20 h-20 rounded-full bg-gray-200"></div>
+                    <div>
+                        <h2 id="profileUsername" class="text-xl font-bold"></h2>
+                        <div class="flex space-x-4 mt-2">
+                            <span id="postsCount">0 posts</span>
+                            <span id="followersCount">0 followers</span>
+                            <span id="followingCount">0 following</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="userPosts" class="grid grid-cols-3 gap-1"></div>
+        </div>
+    </main>
+
+    <script>
+        const APP_SLUG = 'instagram-clone-123456';
+        let currentUser = null;
+        
+        // Show/Hide Loading
+        const showLoading = () => document.getElementById('loading').classList.remove('hidden');
+        const hideLoading = () => document.getElementById('loading').classList.add('hidden');
+
+        // MongoDB Operations
+        async function mongoDbOp(action, collection, data = null, conditions = null, id = null) {
+            try {
+                const response = await axios.post('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    appSlug: APP_SLUG,
+                    action,
+                    collection,
+                    data,
+                    conditions,
+                    id
+                }, {
+                    headers: { Authorization: 'Bearer MmXVQW1YG1V5jXqBxR9AXjM6pO73' }
+                });
+                return response.data.result;
+            } catch (error) {
+                console.error('MongoDB operation failed:', error);
+                return null;
+            }
+        }
+
+        // Auth Toggle
+        document.getElementById('toggleAuth').addEventListener('click', (e) => {
+            e.preventDefault();
+            const isLogin = document.getElementById('authTitle').textContent === 'Login';
+            document.getElementById('authTitle').textContent = isLogin ? 'Sign Up' : 'Login';
+            document.getElementById('username').classList.toggle('hidden');
+            document.getElementById('toggleAuth').textContent = isLogin ? 'Already have an account? Login' : "Don't have an account? Sign up";
+        });
+
+        // Auth Form Submit
+        document.getElementById('authForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading();
+            
+            const isLogin = document.getElementById('authTitle').textContent === 'Login';
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const username = document.getElementById('username').value;
+
+            if (isLogin) {
+                const user = await mongoDbOp('read', 'users', null, { email, password });
+                if (user && user.length > 0) {
+                    currentUser = user[0];
+                    showFeed();
+                } else {
+                    alert('Invalid credentials');
+                }
+            } else {
+                const existingUser = await mongoDbOp('read', 'users', null, { email });
+                if (existingUser && existingUser.length > 0) {
+                    alert('User already exists');
+                } else {
+                    const result = await mongoDbOp('create', 'users', { email, password, username });
+                    if (result) {
+                        currentUser = { email, username };
+                        showFeed();
+                    }
+                }
+            }
+            
+            hideLoading();
+        });
+
+        // Navigation
+        document.getElementById('homeBtn').addEventListener('click', showFeed);
+        document.getElementById('uploadBtn').addEventListener('click', () => document.getElementById('uploadModal').classList.remove('hidden'));
+        document.getElementById('profileBtn').addEventListener('click', showProfile);
+
+        function closeUploadModal() {
+            document.getElementById('uploadModal').classList.add('hidden');
+        }
+
+        // Feed Functions
+        async function showFeed() {
+            showLoading();
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('profileSection').classList.add('hidden');
+            document.getElementById('feedSection').classList.remove('hidden');
+
+            const posts = await mongoDbOp('read', 'posts', null, null);
+            const postsContainer = document.getElementById('posts');
+            postsContainer.innerHTML = '';
+
+            if (posts) {
+                posts.forEach(post => {
+                    const postElement = createPostElement(post);
+                    postsContainer.appendChild(postElement);
+                });
+            }
+            
+            hideLoading();
+        }
+
+        function createPostElement(post) {
+            const div = document.createElement('div');
+            div.className = 'bg-white rounded-lg shadow-md';
+            div.innerHTML = `
+                <div class="p-4 border-b">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 rounded-full bg-gray-200"></div>
+                        <span class="font-semibold">${post.username || 'User'}</span>
+                    </div>
+                </div>
+                <div class="aspect-w-1 aspect-h-1">
+                    <img src="${post.photoUrl || 'https://via.placeholder.com/500'}" class="w-full object-cover" alt="Post">
+                </div>
+                <div class="p-4">
+                    <div class="flex items-center space-x-4 mb-2">
+                        <button onclick="likePost('${post._id}')" class="text-2xl">
+                            <i class="bi ${post.likes?.includes(currentUser._id) ? 'bi-heart-fill text-red-500' : 'bi-heart'}"></i>
+                        </button>
+                    </div>
+                    <p class="text-sm">${post.likes?.length || 0} likes</p>
+                    <p class="mt-2"><span class="font-semibold">${post.username || 'User'}</span> ${post.caption}</p>
+                </div>
+            `;
+            return div;
+        }
+
+        // Profile Functions
+        async function showProfile() {
+            showLoading();
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('feedSection').classList.add('hidden');
+            document.getElementById('profileSection').classList.remove('hidden');
+
+            document.getElementById('profileUsername').textContent = currentUser.username;
+            
+            const userPosts = await mongoDbOp('read', 'posts', null, { userId: currentUser._id });
+            const userPostsContainer = document.getElementById('userPosts');
+            userPostsContainer.innerHTML = '';
+
+            if (userPosts) {
+                userPosts.forEach(post => {
+                    const postElement = document.createElement('div');
+                    postElement.className = 'aspect-square';
+                    postElement.innerHTML = `<img src="${post.photoUrl || 'https://via.placeholder.com/300'}" class="w-full h-full object-cover" alt="Post">`;
+                    userPostsContainer.appendChild(postElement);
+                });
+
+                document.getElementById('postsCount').textContent = `${userPosts.length} posts`;
+            }
+            
+            hideLoading();
+        }
+
+        // Like Function
+        async function likePost(postId) {
+            showLoading();
+            const post = await mongoDbOp('read', 'posts', null, { _id: postId });
+            if (post && post[0]) {
+                const likes = post[0].likes || [];
+                const userIndex = likes.indexOf(currentUser._id);
+                
+                if (userIndex === -1) {
+                    likes.push(currentUser._id);
+                } else {
+                    likes.splice(userIndex, 1);
+                }
+
+                await mongoDbOp('update', 'posts', { likes }, { _id: postId });
+                showFeed();
+            }
+            hideLoading();
+        }
+
+        // Upload Form Submit
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading();
+
+            const formData = new FormData(e.target);
+            const caption = formData.get('textarea');
+            // In a real app, you would upload the image to a storage service
+            // For this demo, we'll use a placeholder URL
+            const photoUrl = 'https://via.placeholder.com/500';
+
+            const post = {
+                userId: currentUser._id,
+                username: currentUser.username,
+                photoUrl,
+                caption,
+                timestamp: new Date(),
+                likes: []
+            };
+
+            await mongoDbOp('create', 'posts', post);
+            closeUploadModal();
+            showFeed();
+            hideLoading();
+        });
+    </script>
+</body>
+</html>
