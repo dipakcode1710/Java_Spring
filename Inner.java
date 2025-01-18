@@ -1,10 +1,9 @@
-// Anonymous class
-class Outer
+// Anonymous class with abstract 
+abstract class Outer
 {
-    public void show()
-    {
-        System.out.println("in Class Outer");
-    }
+    abstract public void show();
+    abstract public void hide();
+
 }
 
 public class Inner{
@@ -18,9 +17,16 @@ public class Inner{
             {
                 System.out.println("in Class Inner");
             }
+            @Override
+            public void hide()
+            {
+                System.out.println("in method hide");
+            }
         };
         out.show();
+        out.hide();
     }
 }
 
 //Output : in Class Inner
+//         in method hide
